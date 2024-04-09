@@ -71,7 +71,7 @@ async def stop(update, context):
 conv_handler = ConversationHandler(
     # Точка входа в диалог.
     # В данном случае — команда /start. Она задаёт первый вопрос.
-    entry_points=[CommandHandler('start', start)],
+    entry_points=[CommandHandler('starter', start)],
 
     # Состояние внутри диалога.
     # Вариант с двумя обработчиками, фильтрующими текстовые сообщения.
@@ -165,6 +165,57 @@ museum_handler = ConversationHandler(
 )
 
 
+stih = """Идет бычок, качается,
+Вздыхает на ходу:
+— Ох, доска кончается,
+Сейчас я упаду!""".split('\n')
+
+async def starter(update, context):
+    context.user_data['string'] = 1
+    await update.message.reply_text(stih[0])
+    return 1
+
+
+# Добавили словарь user_data в параметры.
+async def next_string_response(update, context):
+    # Сохраняем ответ в словаре.
+    if stih[context.user_data['string']] == update.message.text:
+        await update.message.reply_text(f"{stih[context.user_data['string'] + 1]}")
+        context.user_data['string'] += 2
+        if stih[context.user_data['string']] < len(stih):
+            await update.message.reply_text("Всего доброго!")
+            return ConversationHandler.END
+    else:
+        await update.message.reply_text(f'''нет, не так''')
+        await update.message.reply_text(stih[context.user_data['string']])
+
+    return 1
+
+
+async def suphler_command(update, context):
+    await update.message.reply_text(stih[context.user_data['string']])
+    return 1
+
+
+
+stih_handler = ConversationHandler(
+    # Точка входа в диалог.
+    # В данном случае — команда /start. Она задаёт первый вопрос.
+    entry_points=[CommandHandler('start', starter)],
+
+    # Состояние внутри диалога.
+    # Вариант с двумя обработчиками, фильтрующими текстовые сообщения.
+    states={
+        # Функция читает ответ на первый вопрос и задаёт второй.
+        1: [MessageHandler(filters.TEXT & ~filters.COMMAND, next_string_response),
+            CommandHandler("suphler", suphler_command)]
+    },
+
+    # Точка прерывания диалога. В данном случае — команда /stop.
+    fallbacks=[CommandHandler('stop', stop)]
+)
+
+
 async def echo(update, context):
     await update.message.reply_text(f'Я получил сообщение {update.message.text}')
 
@@ -207,7 +258,7 @@ def main():
     application.add_handler(CommandHandler("c", close_keyboarder))
     application.add_handler(CommandHandler("o", home_keyboarder))
     application.add_handler(conv_handler)
-    application.add_handler(conv_handler)
+    application.add_handler(stih_handler)
 
     # Регистрируем обработчик в приложении.
     application.add_handler(museum_handler)
