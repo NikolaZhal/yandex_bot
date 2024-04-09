@@ -24,7 +24,6 @@ async def time_keyboarder(update, context):
     )
 
 
-
 reply_keyboard = [['/dice', '/timer']]
 base_markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=False)
 
