@@ -39,6 +39,7 @@ async def first_response(update, context):
         f"Какая погода в городе {context.user_data['locality']}?")
     return 2
 
+
 async def skip_command(update, context):
     # Сохраняем ответ в словаре.
     context.user_data['locality'] = False
@@ -87,13 +88,90 @@ conv_handler = ConversationHandler(
 )
 
 
+async def entry_command(update, context):
+    await update.message.reply_text(
+        "Добро пожаловать! Пожалуйста, сдайте верхнюю одежду в гардероб!🧥\n"
+        "/first - для перехода в первый зал\n")
+    # Число-ключ в словаре states —
+    # втором параметре ConversationHandler'а.
+    return 1
+
+
+async def first_command(update, context):
+    await update.message.reply_text(
+        "В данном зале (1) представлены:\n"
+        "картины 🖼 молодого художника👨‍🎨\n"
+        "/second - для перехода во второй зал\n"
+        "/exit - для выхода")
+    # Число-ключ в словаре states —
+    # втором параметре ConversationHandler'а.
+    return 2
+
+
+async def second_command(update, context):
+    await update.message.reply_text(
+        "В данном зале (2) представлены:\n"
+        "столовые приборы🥄🍴🍽\n"
+        "/third - для перехода в третий зал\n")
+    # Число-ключ в словаре states —
+    # втором параметре ConversationHandler'а.
+    return 3
+
+
+async def third_command(update, context):
+    await update.message.reply_text(
+        "В данном зале (3) представлены:\n"
+        "лучшие луки🏹\n"
+        "/first - для перехода в первый зал\n"
+        "/forth - для перехода в четвёртый зал\n")
+    # Число-ключ в словаре states —
+    # втором параметре ConversationHandler'а.
+    return 4
+
+
+async def forth_command(update, context):
+    await update.message.reply_text(
+        "В данном зале (4) представлено\n"
+        "Игровые автоматы🎰\n"
+        "/first - для перехода в первый зал\n")
+    # Число-ключ в словаре states —
+    # втором параметре ConversationHandler'а.
+    return 1
+
+
+async def exit_command(update, context):
+    await update.message.reply_text("Всего доброго, не забудьте забрать верхнюю одежду в гардеробе!👘")
+    return ConversationHandler.END
+
+
+museum_handler = ConversationHandler(
+    # Точка входа в диалог.
+    # В данном случае — команда /start. Она задаёт первый вопрос.
+    entry_points=[CommandHandler('entry', entry_command)],
+
+    # Состояние внутри диалога.
+    # Вариант с двумя обработчиками, фильтрующими текстовые сообщения.
+    states={
+        # Функция читает ответ на первый вопрос и задаёт второй.
+        1: [CommandHandler("first", first_command)],
+        # Функция читает ответ на второй вопрос и завершает диалог.
+        2: [CommandHandler("second", second_command), CommandHandler('exit', exit_command)],
+        3: [CommandHandler("third", third_command)],
+        4: [CommandHandler("forth", forth_command), CommandHandler("first", first_command)],
+    },
+
+    # Точка прерывания диалога. В данном случае — команда /stop.
+    fallbacks=[CommandHandler('stop', stop)]
+)
+
+
 async def echo(update, context):
     await update.message.reply_text(f'Я получил сообщение {update.message.text}')
 
 
 async def help_command(update, context):
     """Отправляет сообщение когда получена команда /help"""
-    await update.message.reply_text("Я пока не умею помогать... Я только ваше эхо.")
+    await update.message.reply_text("/entry - вход в музей")
 
 
 async def cube_command(update, context):
@@ -129,9 +207,10 @@ def main():
     application.add_handler(CommandHandler("c", close_keyboarder))
     application.add_handler(CommandHandler("o", home_keyboarder))
     application.add_handler(conv_handler)
+    application.add_handler(conv_handler)
 
     # Регистрируем обработчик в приложении.
-    application.add_handler(text_handler)
+    application.add_handler(museum_handler)
 
     # Запускаем приложение.
     application.run_polling()
