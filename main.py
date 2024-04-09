@@ -5,14 +5,14 @@ from telegram.ext import Application, MessageHandler, filters
 from telegram.ext import CommandHandler, ConversationHandler
 
 from config import BOT_TOKEN
-from keyboard import base_markup, close_keyboarder, home_keyboarder, dice_keyboarder, time_keyboarder
+from keyboard import close_keyboarder, home_keyboarder, dice_keyboarder, time_keyboarder
 from times_commands import time_command, data_command, set_timer, unset
+
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG
 )
 
 logger = logging.getLogger(__name__)
-
 
 
 async def start(update, context):
@@ -31,30 +31,41 @@ async def start(update, context):
     # поэтому текстовые сообщения игнорировались.
 
 
+# Добавили словарь user_data в параметры.
 async def first_response(update, context):
-    # Это ответ на первый вопрос.
-    # Мы можем использовать его во втором вопросе.
-    locality = update.message.text
+    # Сохраняем ответ в словаре.
+    context.user_data['locality'] = update.message.text
     await update.message.reply_text(
-        f"Какая погода в городе {locality}?")
-    # Следующее текстовое сообщение будет обработано
-    # обработчиком states[2]
+        f"Какая погода в городе {context.user_data['locality']}?")
+    return 2
+
+async def skip_command(update, context):
+    # Сохраняем ответ в словаре.
+    context.user_data['locality'] = False
+    await update.message.reply_text(
+        f"Какая погода у вас за окном?")
     return 2
 
 
+# Добавили словарь user_data в параметры.
 async def second_response(update, context):
-    # Ответ на второй вопрос.
-    # Мы можем его сохранить в базе данных или переслать куда-либо.
     weather = update.message.text
     logger.info(weather)
-    await update.message.reply_text("Спасибо за участие в опросе! Всего доброго!")
-    return ConversationHandler.END  # Константа, означающая конец диалога.
-    # Все обработчики из states и fallbacks становятся неактивными.
+    # Используем user_data в ответе.
+    if context.user_data['locality']:
+        await update.message.reply_text(
+            f"Спасибо за участие в опросе! Привет, {context.user_data['locality']}!")
+    else:
+        await update.message.reply_text(
+            f"Спасибо за участие в опросе!")
+    context.user_data.clear()  # очищаем словарь с пользовательскими данными
+    return ConversationHandler.END
 
 
 async def stop(update, context):
     await update.message.reply_text("Всего доброго!")
     return ConversationHandler.END
+
 
 conv_handler = ConversationHandler(
     # Точка входа в диалог.
@@ -65,7 +76,8 @@ conv_handler = ConversationHandler(
     # Вариант с двумя обработчиками, фильтрующими текстовые сообщения.
     states={
         # Функция читает ответ на первый вопрос и задаёт второй.
-        1: [MessageHandler(filters.TEXT & ~filters.COMMAND, first_response)],
+        1: [MessageHandler(filters.TEXT & ~filters.COMMAND, first_response),
+            CommandHandler("skip", skip_command)],
         # Функция читает ответ на второй вопрос и завершает диалог.
         2: [MessageHandler(filters.TEXT & ~filters.COMMAND, second_response)]
     },
@@ -74,11 +86,9 @@ conv_handler = ConversationHandler(
     fallbacks=[CommandHandler('stop', stop)]
 )
 
+
 async def echo(update, context):
     await update.message.reply_text(f'Я получил сообщение {update.message.text}')
-
-
-
 
 
 async def help_command(update, context):
